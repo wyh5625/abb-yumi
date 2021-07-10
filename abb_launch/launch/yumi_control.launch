@@ -35,9 +35,6 @@
         </node>
     </group>
 
-    <!-- run abb_controller/ikSolverVel_controller -->
-    <node name="ikSolverVel_controller" pkg="abb_controller" type="ikSolverVel_controller_node" output="screen"/>
-
     <!-- Show in Rviz   -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find abb_description)/launch/yumi.rviz"/>
 </launch>
