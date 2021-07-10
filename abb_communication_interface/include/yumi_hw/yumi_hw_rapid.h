@@ -41,6 +41,7 @@ class YumiJointStateHandler : public industrial::message_handler::MessageHandler
 	    }
 	    b_joint_state_received = false;
 	    memcpy(&jnts,&joint_positions,sizeof(jnts));
+		return true;
 	}
 
 	bool setJointCommands(float (&jnts)[N_YUMI_JOINTS], int mode_) {
@@ -49,6 +50,7 @@ class YumiJointStateHandler : public industrial::message_handler::MessageHandler
 	    b_joint_commands_set=true;
 	    mode = mode_;
 	    joint_commands_set.notify_all();
+		return true;
 	}
 
 	bool init(industrial::smpl_msg_connection::SmplMsgConnection* connection)
@@ -225,6 +227,7 @@ class YumiRapidInterface {
 
 	    ROS_INFO("Callbacks and handlers set up");
 	    stopComm_ = false;
+		return true;
 	}
 
 };
