@@ -44,25 +44,32 @@ PROC main()
     VAR num prev;
     VAR num local_cycle_time;
     VAR bool wasPosition := FALSE;
-    
+
+    VAR bool recieve_joint_target := FALSE;
+
     ClkReset clk;
     ClkStart clk;
 
-    prev := ClkRead(clk, \HighRes);
     now := ClkRead(clk, \HighRes);
+    prev := now;
+    last_rec_time := -999;
     
     ! Set up interrupt to watch for new trajectory
     !IDelete intr_new_target;    ! clear interrupt handler, in case restarted with ExitCycle
     !CONNECT intr_new_target WITH new_target_handler;
     !IPers ROS_joint_target_left_lock, intr_new_target;
 
-    prev_target :=CJointT();
-    
+    target := CJointT();
+    prev_target := target;
+    local_target.mode := JOINT_POSITION;
+
     WHILE true DO
         ! Check for an updated setpoint. 
         IF (TestAndSet(ROS_joint_target_left_lock)) THEN ! mutex acquired, we can change the target
             IF (ROS_new_joint_target_left) THEN          ! a new setpoint is available
                 local_target := next_joint_target;            ! copy to local var
+                recieve_joint_target := TRUE
+                last_rec_time := ClkRead(clk, \HighRes);
             ENDIF
             ROS_new_joint_target_left := FALSE;
             ROS_joint_target_left_lock := FALSE;        ! release data-lock
@@ -70,8 +77,10 @@ PROC main()
 
         !track setpoint position / velocity
         IF (local_target.mode=JOINT_POSITION) THEN
-            target.robax:=local_target.joints_left.robax;
-            target.extax.eax_a:=local_target.joints_left.extax.eax_a;
+            IF (recieve_joint_target) THEN
+                target.robax:=local_target.joints_left.robax;
+                target.extax.eax_a:=local_target.joints_left.extax.eax_a;
+            ENDIF
             wasPosition:=TRUE;
         ELSE
             IF (wasPosition) THEN
@@ -80,8 +89,14 @@ PROC main()
             ENDIF
             !calculate next target from desired velocity
             now := ClkRead(clk, \HighRes);
+            rec_duration = now - last_rec_time;
+            ! keep prev_target if lost target speed for a while
             local_cycle_time := now - prev;
-            target := compute_target(prev_target,local_target.joints_left,cycle_time);
+            IF rec_duration <= 0.3 THEN
+                target := compute_target(prev_target,local_target.joints_left,cycle_time);
+            ELSE
+                target := prev_target
+            ENDIF
             prev_target := target;
         ENDIF
                 
@@ -96,7 +111,7 @@ PROC main()
         prev := ClkRead(clk, \HighRes);
         MoveAbsJ target,move_speed,\T:=cycle_time,stop_mode,tool0;    
         
-        
+        recieve_joint_target := False;
     ENDWHILE
 ERROR
     ErrWrite \W, "Motion Error", "Error executing motion.  Aborting trajectory.";

@@ -59,6 +59,8 @@ ENDPROC
 LOCAL PROC send_joints()
 	VAR ROS_msg_joint_data message;
     VAR ROS_msg_joint_data target;
+    VAR bool target_timeout_l := FALSE;
+    VAR bool target_timeout_r := FALSE;
 	! VAR jointtarget joints;
 	
     ! get current joint position (degrees)
@@ -74,14 +76,27 @@ LOCAL PROC send_joints()
 
     ! recv message from client
     ROS_receive_msg_joint_data client_socket, target;
-    WaitTestAndSet ROS_joint_target_left_lock;
-    WaitTestAndSet ROS_joint_target_right_lock;
-    next_joint_target := target;
 
-    ROS_new_joint_target_left := TRUE;
-    ROS_new_joint_target_right := TRUE;
-    ROS_joint_target_right_lock := FALSE; !release lock
+    WaitUntil TestAndSet(ROS_joint_target_left_lock) \MaxTime := 1 \TimeFlag := target_timeout_l;
+    WaitUntil TestAndSet(ROS_joint_target_right_lock) \MaxTime := 1 \TimeFlag := target_timeout_r;
+
+    IF (NOT target_timeout_l) AND (NOT target_timeout_r) THEN
+        next_joint_target := target;
+        ROS_new_joint_target_left := TRUE;
+        ROS_new_joint_target_right := TRUE;
+    ELSE
+    ! Force reset
+        ROS_joint_target_left_lock := TRUE;
+        ROS_joint_target_right_lock := TRUE;
+        ROS_new_joint_target_left := FALSE;
+        ROS_new_joint_target_right := FALSE;
+        next_joint_target.joints_left = message.joints_left;
+        next_joint_target.joints_right = message.joints_right;
+        TPWrite "Not receive ROS_joint_target lock within expected time";
+    ENDIF
+
     ROS_joint_target_left_lock := FALSE; !release lock
+    ROS_joint_target_right_lock := FALSE; !release lock
 ERROR
     RAISE;  ! raise errors to calling code
 ENDPROC
