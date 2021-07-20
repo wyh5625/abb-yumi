@@ -90,8 +90,8 @@ LOCAL PROC send_joints()
         ROS_joint_target_right_lock := TRUE;
         ROS_new_joint_target_left := FALSE;
         ROS_new_joint_target_right := FALSE;
-        next_joint_target.joints_left = message.joints_left;
-        next_joint_target.joints_right = message.joints_right;
+        next_joint_target.joints_left := message.joints_left;
+        next_joint_target.joints_right := message.joints_right;
         TPWrite "Not receive ROS_joint_target lock within expected time";
     ENDIF
 

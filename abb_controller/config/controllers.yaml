@@ -24,7 +24,7 @@ joint_group_pos_controller:
 
 # Joint Group Velocity Controller ----------------------------------------
 joint_group_vel_controller:
-  type: position_controllers/JointGroupVelocityController
+  type: velocity_controllers/JointGroupVelocityController
   joints: *robot_joints
 
 # Joint Trajectory Position Controller ----------------------------------------
